@@ -42,29 +42,29 @@ face_names = []
 process_this_frame = True
 
 
-broker = '192.168.1.7'
-port = 1883
-topic = "python/mqtt"
+# broker = '192.168.1.7'
+# port = 1883
+# topic = "python/mqtt"
 
 # generate client ID with pub prefix randomly
-client_id = f'python-mqtt-{random.randint(0, 1000)}'
+# client_id = f'python-mqtt-{random.randint(0, 1000)}'
 # username = 'emqx'
 # password = 'public'
 
-def connect_mqtt():
-    def on_connect(client, userdata, flags, rc):
-        if rc == 0:
-            print("Connected to MQTT Broker!")
-        else:
-            print("Failed to connect, return code %d\n", rc)
+# def connect_mqtt():
+#     def on_connect(client, userdata, flags, rc):
+#         if rc == 0:
+#             print("Connected to MQTT Broker!")
+#         else:
+#             print("Failed to connect, return code %d\n", rc)
 
-    client = mqtt_client.Client(client_id)
-    # client.username_pw_set(username, password)
-    client.on_connect = on_connect
-    client.connect(broker, port)
-    return client
+#     client = mqtt_client.Client(client_id)
+#     # client.username_pw_set(username, password)
+#     client.on_connect = on_connect
+#     client.connect(broker, port)
+#     return client
 
-client = connect_mqtt()
+# client = connect_mqtt()
 
 
 def publish(client, message: string):
@@ -114,9 +114,9 @@ def gen_frames():
                 best_match_index = np.argmin(face_distances)
                 if matches[best_match_index]:
                     name = known_face_names[best_match_index]
-                if name != cur_name:
-                    publish(client, name)
-                    cur_name = name
+                # if name != cur_name:
+                #     publish(client, name)
+                #     cur_name = name
                 face_names.append(name)
                 
             font = cv2.FONT_HERSHEY_DUPLEX
@@ -128,8 +128,8 @@ def gen_frames():
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-def run():
-    client.loop_start()
+# def run():
+#     client.loop_start()
 
 
 @app.route('/')
