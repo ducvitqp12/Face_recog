@@ -14,6 +14,9 @@ from paho.mqtt import client as mqtt_client
 app=Flask(__name__)
 camera = cv2.VideoCapture("http://192.168.1.10:6677/videofeed?username=&password=")
 
+
+vit_image = face_recognition.load_image_file('Vit/vit.jpg')
+
 # Create arrays of known face encodings and their names
 known_face_encodings = []
 known_face_names = []
@@ -155,4 +158,5 @@ def storage():
 def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 if __name__=='__main__':
+    getData()
     app.run(debug=True)
