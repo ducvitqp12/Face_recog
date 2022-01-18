@@ -42,10 +42,7 @@ def publish(client, message):
         msg_count += 1
 
 
-# def run():
-#     client = connect_mqtt()
-#     # client.loop_start()
-#     # publish(client)
+
 
 def getData():
     with open('static/name.txt') as f:
