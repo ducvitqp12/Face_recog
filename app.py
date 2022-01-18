@@ -13,28 +13,11 @@ from paho.mqtt import client as mqtt_client
 
 app=Flask(__name__)
 camera = cv2.VideoCapture("http://192.168.1.10:6677/videofeed?username=&password=")
-# Load a sample picture and learn how to recognize it.
-krish_image = face_recognition.load_image_file("Krish/krish.jpg")
-krish_face_encoding = face_recognition.face_encodings(krish_image)[0]
-
-# Load a second sample picture and learn how to recognize it.
-bradley_image = face_recognition.load_image_file("Vit/vit.jpg")
-bradley_face_encoding = face_recognition.face_encodings(bradley_image)[0]
-
-# vit_image = face_recognition.load_image_file("Vit/vit.jpg")
-# vit_face_encoding = face_recognition.face_encodings(vit_image)[0]
 
 # Create arrays of known face encodings and their names
-known_face_encodings = [
-    krish_face_encoding,
-    bradley_face_encoding
-    # vit_face_encoding
-]
-known_face_names = [
-    "Krish",
-    "Bradly"
-    # "Vit
-]
+known_face_encodings = []
+known_face_names = []
+known_face_access= []
 # Initialize some variables
 face_locations = []
 face_encodings = []
@@ -66,6 +49,16 @@ topic = "python/mqtt"
 
 # client = connect_mqtt()
 
+
+def getData():
+    with open('static/name.txt') as f:
+        for line in f:
+            item = [i for i in line.split()]
+            image = face_recognition.load_image_file(item[1])
+            face_encoding = face_recognition.face_encodings(image)[0]
+            known_face_encodings.append(face_encoding)
+            known_face_names.append(item[0])
+            known_face_access.append(item[2])
 
 def publish(client, message: string):
     msg_count = 0

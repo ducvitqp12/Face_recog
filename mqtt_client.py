@@ -47,6 +47,11 @@ def publish(client, message):
 #     # client.loop_start()
 #     # publish(client)
 
-
-# if __name__ == '__main__':
-#     run()
+def getData():
+    with open('static/name.txt') as f:
+        for line in f:
+            item = [i for i in line.split()]
+            print(item[1])
+        
+if __name__ == '__main__':
+    getData()
