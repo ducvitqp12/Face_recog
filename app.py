@@ -44,7 +44,7 @@ process_this_frame = True
 
 # broker = '192.168.1.7'
 # port = 1883
-# topic = "python/mqtt"
+topic = "python/mqtt"
 
 # generate client ID with pub prefix randomly
 # client_id = f'python-mqtt-{random.randint(0, 1000)}'
@@ -80,10 +80,25 @@ def publish(client, message: string):
             print(f"Failed to send message to topic {topic}")
         msg_count += 1
 
+def increase_brightness(img, value=30):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    lim = 255 - value
+    v[v > lim] = 255
+    v[v <= lim] += value
+
+    final_hsv = cv2.merge((h, s, v))
+    img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+    return img
+
+
 def gen_frames():  
     ptime = 0
     while True:
-        success, frame = camera.read()  # read the camera 
+        success, frame = camera.read()  # read the camera
+        # frame = cv2.detailEnhance(frame, 100, 0.85)
+        # frame = increase_brightness(frame, 50)
         ctime = time.time()
         fps = 1/(ctime - ptime)
         ptime = ctime
@@ -135,6 +150,14 @@ def gen_frames():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/index.html')
+def main_page():
+    return render_template('index.html')
+    
+@app.route('/storage.html')
+def storage():
+    return render_template('storage.html')
 @app.route('/video_feed')
 def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
