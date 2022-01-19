@@ -67,16 +67,16 @@ def getData():
 
 def publish(client, message: string):
     msg_count = 0
-    while True:
-        time.sleep(1)
-        result = client.publish(topic, message)
+    # while True:
+    #     time.sleep(1)
+    result = client.publish(topic, message)
         # result: [0, 1]
-        status = result[0]
-        if status == 0:
-            print(f"Send `{message}` to topic `{topic}`")
-        else:
-            print(f"Failed to send message to topic {topic}")
-        msg_count += 1
+    status = result[0]
+    if status == 0:
+        print(f"Send `{message}` to topic `{topic}`")
+    else:
+        print(f"Failed to send message to topic {topic}")
+    msg_count += 1
 
 def increase_brightness(img, value=30):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -132,9 +132,11 @@ def gen_frames():
                     #     cur_name = name
                     for i in range(len(face_names)):
                         if(name == face_names[i]):
+                            # print(face_names)
                             face_detected_time[i] = face_detected_time[i] + 1
                             break
-                    face_names.append(name)
+                        if(name != face_names[i] and i == len(face_names)-1):
+                            face_names.append(name)
                     flg[0] = flg[0] + 1
             else:
                 name_detected = ""
@@ -142,15 +144,19 @@ def gen_frames():
                     name_detected = face_names[face_detected_time.index(max(face_detected_time))]
                 else:
                     name_detected = "Unknown"
+                publish(client, max(face_detected_time))
                 flg[0] = 0
+                print(face_names)
                 face_names.clear()
-                for i in face_detected_time:
-                    i = 1
+                face_names.append("Unknown")
+                print(face_names)
+                for i in range(len(face_detected_time)):
+                    face_detected_time[i] = 1
+                print(face_detected_time)
                 publish(client, name_detected)
-                
             font = cv2.FONT_HERSHEY_DUPLEX
             
-            # cv2.putText(frame, flg[0], (220, 70), font, 1.0, (255, 255, 255), 1)
+            cv2.putText(frame, str(flg[0]), (220, 70), font, 1.0, (255, 255, 255), 1)
             cv2.putText(frame, f'FPS: {int(fps)}', (20,70), cv2.FONT_HERSHEY_PLAIN, 3, (255,0,0), 2)
 
             ret, buffer = cv2.imencode('.jpg', frame)
@@ -178,5 +184,6 @@ def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 if __name__=='__main__':
     getData()
-    face_detected_time = [1]*len(known_face_names)
+    face_detected_time = [1]*(len(known_face_names)+1)
+    face_names.append("Unknown")
     app.run(debug=True)

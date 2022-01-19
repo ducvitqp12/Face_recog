@@ -53,7 +53,7 @@ def getData():
         print(list)
         # list.clear()
         print(max(list))
-        print(list.index(max(list)))
+        print(list.index(1))
 
 if __name__ == '__main__':
     getData()
