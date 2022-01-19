@@ -20,6 +20,7 @@ vit_image = face_recognition.load_image_file('Vit/vit.jpg')
 # Create arrays of known face encodings and their names
 known_face_encodings = []
 known_face_names = []
+known_face_path = []
 known_face_access= []
 # Initialize some variables
 face_locations = []
@@ -27,12 +28,15 @@ face_encodings = []
 process_this_frame = True
 face_names = []
 face_detected_time = []
-flg = [0]
+flg = [0, 0]
+data = []
 
 
 broker = '192.168.1.7'
 port = 1883
-topic = "python/mqtt"
+topic1 = "doorlock/open"
+topic2 = "doorlock/face_infor"
+subTopic= "doorlock/capture" 
 
 # generate client ID with pub prefix randomly
 client_id = f'python-mqtt-{random.randint(0, 1000)}'
@@ -59,13 +63,15 @@ def getData():
     with open('static/name.txt') as f:
         for line in f:
             item = [i for i in line.split()]
+            data.append(item)
             image = face_recognition.load_image_file(item[1])
             face_encoding = face_recognition.face_encodings(image)[0]
             known_face_encodings.append(face_encoding)
             known_face_names.append(item[0])
+            known_face_path.append(item[1])
             known_face_access.append(item[2])
 
-def publish(client, message: string):
+def publish(client, message: string, topic: string):
     msg_count = 0
     # while True:
     #     time.sleep(1)
@@ -161,12 +167,19 @@ def gen_frames():
 
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
+            if(flg[1] == 0):
+                f = open('output.jpg', "wb")
+                f.write(frame)
+                f.close()
+                flg[1] += 1
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 def run():
     client.loop_start()
 
+def myFunc(e):
+      return e[2]
 
 @app.route('/')
 def index():
@@ -178,7 +191,8 @@ def main_page():
     
 @app.route('/storage.html')
 def storage():
-    return render_template('storage.html')
+    data.sort(key=myFunc)
+    return render_template('storage.html', data = data)
 @app.route('/video_feed')
 def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')

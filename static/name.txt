@@ -1,2 +1,3 @@
-Bradley static/dataset/bradley.JPG 1
-AnhDuc static/dataset/vit.jpg 1
+Bradley static/dataset/bradley.JPG guess
+AnhDuc static/dataset/vit.jpg admin
+Krish static/dataset/krish.jpg admin

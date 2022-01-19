@@ -43,17 +43,19 @@ def publish(client, message):
 
 
 list = [10, 20, 70, 5, 15, 20]
-
+data = []
 def getData():
     with open('static/name.txt') as f:
         for line in f:
             item = [i for i in line.split()]
+            data.append(item)
             print(item[1])
+            print(data)
             # print(list)
         print(list)
         # list.clear()
         print(max(list))
-        print(list.index(1))
+        # print(list.index(1))
 
 if __name__ == '__main__':
     getData()
