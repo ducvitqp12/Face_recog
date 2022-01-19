@@ -3,7 +3,7 @@
 import random
 import time
 
-from paho.mqtt import client as mqtt_client
+# from paho.mqtt import client as mqtt_client
 
 
 broker = '192.168.1.7'
@@ -42,13 +42,18 @@ def publish(client, message):
         msg_count += 1
 
 
-
+list = [10, 20, 70, 5, 15, 20]
 
 def getData():
     with open('static/name.txt') as f:
         for line in f:
             item = [i for i in line.split()]
             print(item[1])
-        
+            # print(list)
+        print(list)
+        # list.clear()
+        print(max(list))
+        print(list.index(max(list)))
+
 if __name__ == '__main__':
     getData()

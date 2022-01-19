@@ -24,33 +24,35 @@ known_face_access= []
 # Initialize some variables
 face_locations = []
 face_encodings = []
-face_names = []
 process_this_frame = True
+face_names = []
+face_detected_time = []
+flg = [0]
 
 
-# broker = '192.168.1.7'
-# port = 1883
+broker = '192.168.1.7'
+port = 1883
 topic = "python/mqtt"
 
 # generate client ID with pub prefix randomly
-# client_id = f'python-mqtt-{random.randint(0, 1000)}'
+client_id = f'python-mqtt-{random.randint(0, 1000)}'
 # username = 'emqx'
 # password = 'public'
 
-# def connect_mqtt():
-#     def on_connect(client, userdata, flags, rc):
-#         if rc == 0:
-#             print("Connected to MQTT Broker!")
-#         else:
-#             print("Failed to connect, return code %d\n", rc)
+def connect_mqtt():
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+            print("Connected to MQTT Broker!")
+        else:
+            print("Failed to connect, return code %d\n", rc)
 
-#     client = mqtt_client.Client(client_id)
-#     # client.username_pw_set(username, password)
-#     client.on_connect = on_connect
-#     client.connect(broker, port)
-#     return client
+    client = mqtt_client.Client(client_id)
+    # client.username_pw_set(username, password)
+    client.on_connect = on_connect
+    client.connect(broker, port)
+    return client
 
-# client = connect_mqtt()
+client = connect_mqtt()
 
 
 def getData():
@@ -98,7 +100,7 @@ def gen_frames():
         ctime = time.time()
         fps = 1/(ctime - ptime)
         ptime = ctime
-        cv2.putText(frame, f'FPS: {int(fps)}', (20,70), cv2.FONT_HERSHEY_PLAIN, 3, (255,0,0), 2)
+        
         # cv2.imshow("Frame", frame)
         cv2.waitKey(1)
         if not success:
@@ -114,33 +116,50 @@ def gen_frames():
             # Find all the faces and face encodings in the current frame of video
             face_locations = face_recognition.face_locations(rgb_small_frame)
             face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
-            face_names = []
-            name = "Unknown"
-            cur_name = "Unknown"
-            for face_encoding in face_encodings:
-                # See if the face is a match for the known face(s)
-                matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
-                # Or instead, use the known face with the smallest distance to the new face
-                face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-                best_match_index = np.argmin(face_distances)
-                if matches[best_match_index]:
-                    name = known_face_names[best_match_index]
-                # if name != cur_name:
-                #     publish(client, name)
-                #     cur_name = name
-                face_names.append(name)
+            # cur_name = "Unknown"
+            if( flg[0]<100 ):
+                for face_encoding in face_encodings:
+                    name = "Unknown"
+                    # See if the face is a match for the known face(s)
+                    matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+                    # Or instead, use the known face with the smallest distance to the new face
+                    face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+                    best_match_index = np.argmin(face_distances)
+                    if matches[best_match_index]:
+                        name = known_face_names[best_match_index]
+                    # if name != cur_name:
+                    #     publish(client, name)
+                    #     cur_name = name
+                    for i in range(len(face_names)):
+                        if(name == face_names[i]):
+                            face_detected_time[i] = face_detected_time[i] + 1
+                            break
+                    face_names.append(name)
+                    flg[0] = flg[0] + 1
+            else:
+                name_detected = ""
+                if (max(face_detected_time)/flg[0]) > 0.65:
+                    name_detected = face_names[face_detected_time.index(max(face_detected_time))]
+                else:
+                    name_detected = "Unknown"
+                flg[0] = 0
+                face_names.clear()
+                for i in face_detected_time:
+                    i = 1
+                publish(client, name_detected)
                 
             font = cv2.FONT_HERSHEY_DUPLEX
             
-            cv2.putText(frame, name, (220, 70), font, 1.0, (255, 255, 255), 1)
+            # cv2.putText(frame, flg[0], (220, 70), font, 1.0, (255, 255, 255), 1)
+            cv2.putText(frame, f'FPS: {int(fps)}', (20,70), cv2.FONT_HERSHEY_PLAIN, 3, (255,0,0), 2)
 
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-# def run():
-#     client.loop_start()
+def run():
+    client.loop_start()
 
 
 @app.route('/')
@@ -159,4 +178,5 @@ def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 if __name__=='__main__':
     getData()
+    face_detected_time = [1]*len(known_face_names)
     app.run(debug=True)
