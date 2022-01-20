@@ -3,6 +3,13 @@
 import random
 import time
 
+from os import listdir
+from os.path import isfile, join
+onlyfiles = [f for f in listdir("static/temp_image") if isfile(join("static/temp_image", f))]
+for item in onlyfiles:
+    tmp = "static/temp_image/" + item
+    item = tmp
+    print(tmp)
 # from paho.mqtt import client as mqtt_client
 
 
@@ -44,18 +51,24 @@ def publish(client, message):
 
 list = [10, 20, 70, 5, 15, 20]
 data = []
+
+def current_milli_time():
+    return round(time.time() * 1000)
+
 def getData():
-    with open('static/name.txt') as f:
-        for line in f:
-            item = [i for i in line.split()]
-            data.append(item)
-            print(item[1])
-            print(data)
-            # print(list)
-        print(list)
-        # list.clear()
-        print(max(list))
-        # print(list.index(1))
+    # with open('static/name.txt') as f:
+    #     for line in f:
+    #         item = [i for i in line.split()]
+    #         data.append(item)
+    #         print(item[1])
+    #         print(data)
+    #         # print(list)
+    #     print(list)
+    #     # list.clear()
+    #     print(max(list))
+    #     # print(list.index(1))
+    i = str(current_milli_time())
+    print(onlyfiles)
 
 if __name__ == '__main__':
     getData()

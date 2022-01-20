@@ -12,7 +12,7 @@
 <style>
     .main-container {
         display: grid;
-        grid-gap: 20px;
+        grid-gap: 10px;
         grid-template-columns: auto auto auto;
         background-color: #2196F3;
         padding: 10px;
@@ -23,17 +23,11 @@
         border: 1px solid rgba(0, 0, 0, 0.8);
         margin-left: auto;
         margin-right: auto;
-        height: 500px;
-        width: 400px;
+        height: 300px;
+        width: 500px;
         font-size: 30px;
         text-align: center;
         border-radius: 10px;
-    }
-    .admin{
-        background-color: #2196F3;
-    }
-    .guess{
-        background-color: wheat;
     }
 </style>
 
@@ -51,7 +45,7 @@
                 <ul>
                     <!-- <li><a href="#"><i class="fas fa-search"></i></a></li>
                         <li><a href="#"><i class="fas fa-bell"></i></a></li> -->
-                    <li><a href="add_new.html"><i class="fas fa-power-off"></i></a></li>
+                    <li><a href="{{ url_for('delete') }}"><i class="fas fa-power-off"></i></a></li>
                 </ul>
             </div>
         </div>
@@ -79,12 +73,10 @@
                 </li>
             </div>
         </div>
-        <div class="main-container" style="background-image: url('/static/image/BG1.jpg'); overflow: scroll; background-size: cover;">
-            {% for item in data %}
-            <div class="grid-item {{item[2]}}">
-                <div style="max-width: 350px; height: 300px; margin-top: 10px; margin-left: auto; margin-right: auto;">
-                    <img src="{{item[1]}}" alt="" style="margin-left: auto; margin-right: auto; border-radius: 20px; height: 300px; max-width: 350px;">
-                </div>
+        <div class="main-container" style="background-image: url('/static/image/BG1.jpg'); overflow: scroll;">
+            {% for item in onlyfiles %}
+            <div class="grid-item ">
+                 <img src="{{item}}" alt="" style="margin: auto; border-radius: 20px; width: 450px; margin-top: 10px;">
             </div>
             {% endfor %}
         </div>
