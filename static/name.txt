@@ -1,3 +1,6 @@
 Bradley static/dataset/bradley.JPG guess
-AnhDuc static/dataset/vit.jpg admin
-Krish static/dataset/krish.jpg admin
+AnhDuc static/dataset/vit.png admin
+Messi static/dataset/m30.jpg guess
+HuyHoang static/dataset/hoang.jpg admin
+Quang static/dataset/Quang.jpg admin
+Ronaldo static/dataset/cr7.jpg guess

@@ -17,7 +17,7 @@ from os.path import isfile, join
 
 app = Flask(__name__)
 camera = cv2.VideoCapture(
-    "http://192.168.1.5:6677/videofeed?username=&password=")
+    "http://192.168.1.10:6677/videofeed?username=&password=")
 
 
 vit_image = face_recognition.load_image_file('Vit/vit.jpg')
@@ -38,7 +38,7 @@ data = []
 ctime = [0, 0]
 
 
-broker = '192.168.1.7'
+broker = '192.168.1.5'
 port = 1883
 topic1 = "doorlock/open"
 topic2 = "doorlock/face_infor"
@@ -237,6 +237,21 @@ def recog(frame):
                         if(name != face_names[i] and i == len(face_names)-1):
                             face_names.append(name)
                     flg[0] = flg[0] + 1
+
+                    for (top, right, bottom, left), name in zip(face_locations, face_names):
+                        # Scale back up face locations since the frame we detected in was scaled to 1/4 size
+                        top *= 4
+                        right *= 4
+                        bottom *= 4
+                        left *= 4
+
+                        # Draw a box around the face
+                        cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+
+                        # Draw a label with a name below the face
+                        cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
+                        font = cv2.FONT_HERSHEY_DUPLEX
+                        # cv2.putText(frame, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
         else:
                 name_detected = ""
                 if (max(face_detected_time)/flg[0]) > 0.65:
@@ -267,6 +282,7 @@ def recog(frame):
                     publish(pubclient, message, topic2)
                     if state:
                         publish(pubclient, "open", topic1)
+        
 
 
 @app.route('/start')
