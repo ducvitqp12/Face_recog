@@ -10,24 +10,92 @@
 </head>
 
 <style>
-    .main-container {
-        display: grid;
-        grid-gap: 10px;
-        grid-template-columns: auto auto auto;
-        background-color: #2196F3;
-        padding: 10px;
+
+    ol li{
+        background: PaleGoldenRod;
+        text-align: center;
+        width: 100%;
+    }
+    ol li div{
+        display: inline-flex;
+        width: 100%;
     }
 
-    .grid-item {
-        /* background-color: rgba(255, 255, 255, 0.8); */
-        border: 1px solid rgba(0, 0, 0, 0.8);
-        margin-left: auto;
-        margin-right: auto;
-        height: 300px;
-        width: 500px;
-        font-size: 30px;
-        text-align: center;
-        border-radius: 10px;
+    span {
+        color: white;
+        font-size: 20px;
+        width: 20%;
+    }
+
+    .arrow-icon {
+        height: 1.4em;
+        width: 10%;
+        display: block;
+        padding: 0.5em;
+        margin: 1em auto;
+        position: relative;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .left-bar {
+        position: absolute;
+        background-color: transparent;
+        top: 0;
+        left: 0;
+        width: 20px;
+        height: 5px;
+        display: block;
+        transform: rotate(35deg);
+        float: right;
+        border-radius: 2px;
+    }
+
+    .left-bar:after {
+        content: "";
+        background-color: white;
+        width: 20px;
+        height: 5px;
+        display: block;
+        float: right;
+        border-radius: 6px 10px 10px 6px;
+        transition: all 0.5s cubic-bezier(0.25, 1.7, 0.35, 0.8);
+        z-index: -1;
+    }
+
+    .right-bar {
+        position: absolute;
+        background-color: transparent;
+        top: 0px;
+        left: 13px;
+        width: 20px;
+        height: 5px;
+        display: block;
+        transform: rotate(-35deg);
+        float: right;
+        border-radius: 2px;
+    }
+
+    .right-bar:after {
+        content: "";
+        background-color: white;
+        width: 20px;
+        height: 5px;
+        display: block;
+        float: right;
+        border-radius: 10px 6px 6px 10px;
+        transition: all 0.5s cubic-bezier(0.25, 1.7, 0.35, 0.8);
+        z-index: -1;
+    }
+
+    .open .left-bar:after {
+        transform-origin: center center;
+        transform: rotate(-70deg);
+    }
+
+    .open .right-bar:after {
+        transform-origin: center center;
+        transform: rotate(70deg);
     }
 </style>
 
@@ -67,18 +135,27 @@
                     </a>
                 </li>
                 <li class="item">
-                    <a href="#" class="menu-btn">
+                    <a href="add_new.html" class="menu-btn">
                         <i class="fas fa-info-circle"></i><span>About</span>
                     </a>
                 </li>
             </div>
         </div>
         <div class="main-container" style="background-image: url('/static/image/BG1.jpg'); overflow: scroll;">
-            {% for item in onlyfiles %}
-            <div class="grid-item ">
-                 <img src="{{item}}" alt="" style="margin: auto; border-radius: 20px; width: 450px; margin-top: 10px;">
-            </div>
-            {% endfor %}
+            <ol class="gradient-list">
+                <li>
+                    <div>
+                        <span class="date">20/12/2022 </span> <span class="name">Anh Duc</span> <span
+                            class="rules">Admin</span>
+                        <a class="arrow-icon">
+                            <span class="left-bar"></span>
+                            <span class="right-bar"></span>
+                        </a>
+                    </div>
+
+                    <img style="width: 60%; content-visibility: hidden;" src="static/temp_image/temp.jpg" alt="">
+                </li>
+            </ol>
         </div>
     </div>
     <!--wrapper end-->
@@ -87,6 +164,10 @@
         $(document).ready(function () {
             $(".sidebar-btn").click(function () {
                 $(".wrapper").toggleClass("collapse");
+            });
+
+            $(".arrow-icon").click(function () {
+                $(this).toggleClass("open");
             });
         });
     </script>

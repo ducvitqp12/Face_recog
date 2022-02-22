@@ -49,7 +49,7 @@ face_encodings = []
 process_this_frame = True
 face_names = []
 face_detected_time = []
-flg = [0, True, False, True, "", False]
+flg = [0, True, False, True, "", False, False]
 data = []
 ctime = [0, 0]
 
@@ -123,17 +123,19 @@ def subscribe(client: mqtt_client):
         # if(msg.topic == topic2):
         if(msg.topic == topic1):
             if message == "open":
-                print("open")
-                success, frame = camera.read()
-                if success:
-                    ret, buffer = cv2.imencode('.jpg', frame)
-                    frame = buffer.tobytes()
-                    i = round(time.time() * 1000)
-                            # print(i)
-                    f = open(f"static/temp_image/temp.jpg", "wb")
-                    f.write(frame)
-                    f.close()
-                    putData("Open by admin", "Admin", "static/temp_image/temp.jpg")
+                if flg[6]:
+                    flg[6] = False
+                else:
+                    success, frame = camera.read()
+                    if success:
+                        ret, buffer = cv2.imencode('.jpg', frame)
+                        frame = buffer.tobytes()
+                        i = round(time.time() * 1000)
+                                # print(i)
+                        f = open(f"static/temp_image/temp.jpg", "wb")
+                        f.write(frame)
+                        f.close()
+                        putData("Open by admin", "Admin", "static/temp_image/temp.jpg")
             if message == "start":
                 if not(flg[3]):
                     flg[2] = True
@@ -312,6 +314,7 @@ def recog(frame, embeddings, names):
                         publish(pubclient, "open", topic1)
                         putData(flg[4], "Admin", "static/temp_image/temp.jpg")
                         flg[4] = ""
+                        flg[6] = True
                     else:
                         putData(flg[4], "Guess", "static/temp_image/temp.jpg")
                     flg[2] = False
@@ -345,6 +348,10 @@ def main_page():
     flg[3] = False
     return render_template('index.html')
 
+@app.route('/add_new.html')
+def history():
+    flg[3] = True
+    return render_template('add_new.html')
 
 @app.route('/storage.html')
 def storage():
