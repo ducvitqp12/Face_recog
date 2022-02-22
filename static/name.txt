@@ -1,2 +1,1 @@
-Tung,static/dataset/cr7.jpg,guess
 Anh Duc,static/dataset/Anh Duc.jpg,admin

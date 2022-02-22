@@ -19,6 +19,7 @@ from torchvision import transforms
 from PIL import Image
 from face_capture import capture
 from update_faces import update_face
+from firebase import putData
 
 
 app = Flask(__name__)
@@ -48,7 +49,7 @@ face_encodings = []
 process_this_frame = True
 face_names = []
 face_detected_time = []
-flg = [0, True, False, False, ""]
+flg = [0, True, False, True, "", False]
 data = []
 ctime = [0, 0]
 
@@ -73,7 +74,7 @@ pub_client_id = f'python-mqtt-{random.randint(0, 1000)}'
 def connect_mqtt(id: string):
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
-            print("Connected to MQTT Broker!")
+            print(id + " Connected to MQTT Broker!")
         else:
             print("Failed to connect, return code %d\n", rc)
 
@@ -82,14 +83,6 @@ def connect_mqtt(id: string):
     client.on_connect = on_connect
     client.connect(broker, port)
     return client
-
-
-pubclient = connect_mqtt(pub_client_id)
-
-
-def current_milli_time():
-    return round(time.time() * 1000)
-
 
 
 def getData():
@@ -128,34 +121,27 @@ def subscribe(client: mqtt_client):
         data = msg.payload
         message = data.decode("utf-8")
         # if(msg.topic == topic2):
-        if(msg.topic == subTopic):
-            if message == "capture":
-                flg[3] = True
-                if flg[1]:
-                    while flg[3]:
-                        success, frame = camera.read()
-                        if not success:
-                            break
-                        else:
-                            if flg[2]:
-                                recog(frame)
-                            ret, buffer = cv2.imencode('.jpg', frame)
-                            frame = buffer.tobytes()
-                            if flg[3] and ctime[1] < 3:
-                                if round(time.time()) > (ctime[0] + 1):
-                                    ctime[0] = round(time.time())
-                                    ctime[1] += 1
-                                    i = round(time.time() * 1000)
-                                    # print(i)
-                                    f = open(
-                                        f"static/temp_image/{str(i)}.jpg", "wb")
-                                    f.write(frame)
-                                    f.close()
-                            elif ctime[1] == 3:
-                                flg[3] = False
-                                ctime[1] = 0
+        if(msg.topic == topic1):
+            if message == "open":
+                print("open")
+                success, frame = camera.read()
+                if success:
+                    ret, buffer = cv2.imencode('.jpg', frame)
+                    frame = buffer.tobytes()
+                    i = round(time.time() * 1000)
+                            # print(i)
+                    f = open(f"static/temp_image/temp.jpg", "wb")
+                    f.write(frame)
+                    f.close()
+                    putData("Open by admin", "Admin", "static/temp_image/temp.jpg")
             if message == "start":
-                flg[2] = True
+                if not(flg[3]):
+                    flg[2] = True
+                else: 
+                    print("bg run")
+                    flg[5] = False
+                    flg[2] = True
+                    background()
         print(f"From topic {msg.topic} got message {message}")
         # f = open('output.jpg', "wb")
         # f.write(msg.payload)
@@ -163,9 +149,14 @@ def subscribe(client: mqtt_client):
         # f.close()
 
     # client.subscribe(topic2)
-    client.subscribe(subTopic)
+    client.subscribe(topic1)
     client.on_message = on_message
 
+pubclient = connect_mqtt(pub_client_id)
+subclient = connect_mqtt(sub_client_id)
+subscribe(subclient)
+subclient.loop_start()
+pubclient.loop_start()
 
 def trans(img):
     transform = transforms.Compose([
@@ -199,7 +190,7 @@ def inference(model, face, local_embeds, threshold=3):
     norm_score = torch.sum(torch.pow(norm_diff, 2), dim=1)
 
     min_dist, embed_idx = torch.min(norm_score, dim=1)
-    print(min_dist*power, names[embed_idx])
+    # print(min_dist*power, names[embed_idx])
     # print(min_dist.shape)
     if min_dist*power > threshold:
         return -1, -1
@@ -236,43 +227,29 @@ def gen_frames():
         if isSuccess:
             if flg[2]:
                 recog(frame, embeddings, names)
-
-            font = cv2.FONT_HERSHEY_DUPLEX
-            if not(flg[3]):
-                cv2.putText(frame, str(flg[0]), (220, 70),
-                            font, 1.0, (255, 255, 255), 1)
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
-            if flg[3] and ctime[1] < 3:
-                if round(time.time()) > (ctime[0] + 1):
-                    ctime[0] = round(time.time())
-                    ctime[1] += 1
-                    i = round(time.time() * 1000)
-                    # print(i)
-                    f = open(f"static/temp_image/{str(i)}.jpg", "wb")
-                    f.write(frame)
-                    f.close()
-            elif ctime[1] == 3:
-                flg[3] = False
-                ctime[1] = 0
             if cv2.waitKey(1)&0xFF == 27:
                 break
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+def background():
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
+    while True:
+        isSuccess, frame = camera.read()
+        # print(isSuccess)
+        if isSuccess:
+            # print("start")
+            if flg[2]:
+                recog(frame, embeddings, names)
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            if flg[5]:
+                break
     
 def recog(frame, embeddings, names):
-    # Resize frame of video to 1/4 size for faster face recognition processing
-    small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-       # Convert the image from BGR color (which OpenCV uses) to RGB color (which face_recognition uses)
-    rgb_small_frame = small_frame[:, :, ::-1]
-
-        # Only process every other frame of video to save time
-
-        # Find all the faces and face encodings in the current frame of video
-    face_locations = face_recognition.face_locations(rgb_small_frame)
-    face_encodings = face_recognition.face_encodings(
-            rgb_small_frame, face_locations)
-         # cur_name = "Unknown"
     if(flg[0] < 20):
         boxes, _ = mtcnn.detect(frame)
         if boxes is not None:
@@ -285,41 +262,20 @@ def recog(frame, embeddings, names):
                             frame = cv2.rectangle(frame, (bbox[0],bbox[1]), (bbox[2],bbox[3]), (0,0,255), 6)
                             score = torch.Tensor.cpu(score[0]).detach().numpy()*power
                             frame = cv2.putText(frame, names[idx] + '_{:.2f}'.format(score), (bbox[0],bbox[1]), cv2.FONT_HERSHEY_DUPLEX, 2, (0,255,0), 2, cv2.LINE_8)
-                            if score > 0.5:
-                                name = names[idx]
-                                for i in range(len(face_names)):
-                                    if(name == face_names[i]):
-                                        # print(face_names)
-                                        face_detected_time[i] = face_detected_time[i] + 1
-                                        break
-                                    if(name != face_names[i] and i == len(face_names)-1):
-                                        face_names.append(name)
-                                    flg[0] = flg[0] + 1 
+                            name = names[idx]
+                            
                 else:
-                            frame = cv2.rectangle(frame, (bbox[0],bbox[1]), (bbox[2],bbox[3]), (0,0,255), 6)
-                            frame = cv2.putText(frame,'Unknown', (bbox[0],bbox[1]), cv2.FONT_HERSHEY_DUPLEX, 2, (0,255,0), 2, cv2.LINE_8)
-
-
-            # for face_encoding in face_encodings:
-            #     name = "Unknown"
-            #     # See if the face is a match for the known face(s)
-            #     matches = face_recognition.compare_faces(
-            #             known_face_encodings, face_encoding)
-            #         # Or instead, use the known face with the smallest distance to the new face
-            #     face_distances = face_recognition.face_distance(
-            #             known_face_encodings, face_encoding)
-            #     best_match_index = np.argmin(face_distances)
-            #     if matches[best_match_index]:
-            #             name = known_face_names[best_match_index]
-            #     for i in range(len(face_names)):
-            #             if(name == face_names[i]):
-            #                 # print(face_names)
-            #                 face_detected_time[i] = face_detected_time[i] + 1
-            #                 break
-            #             if(name != face_names[i] and i == len(face_names)-1):
-            #                 face_names.append(name)
-            #     flg[0] = flg[0] + 1
-
+                    frame = cv2.rectangle(frame, (bbox[0],bbox[1]), (bbox[2],bbox[3]), (0,0,255), 6)
+                    frame = cv2.putText(frame,'Unknown', (bbox[0],bbox[1]), cv2.FONT_HERSHEY_DUPLEX, 2, (0,255,0), 2, cv2.LINE_8)
+                for i in range(len(face_names)):
+                    if(name == face_names[i]):
+                        face_detected_time[i] = face_detected_time[i] + 1
+                        break
+                    if(name != face_names[i] and i == len(face_names)-1):
+                        face_names.append(name)
+                flg[0] = flg[0] + 1 
+                print(name)
+                print(flg[0])
     else:
         name_detected = ""
         print(face_detected_time)
@@ -328,7 +284,6 @@ def recog(frame, embeddings, names):
                         max(face_detected_time))]
         else:
                     name_detected = "Unknown"
-                # publish(client, max(face_detected_time))
         flg[0] = 0
         print(face_names)
         face_names.clear()
@@ -346,14 +301,22 @@ def recog(frame, embeddings, names):
                             state = True
                     message = '{"time": ' + str(i) + ',"name": "' + \
                         flg[4] + '","state": ' + str(state).lower() + '}'
-                    if (flg[4] == "Unknown"):
-                        flg[3] = True
+                    flg[5] = True
                     publish(pubclient, message, topic2)
+                    ret, buffer = cv2.imencode('.jpg', frame)
+                    frame = buffer.tobytes()
+                    f = open(f"static/temp_image/temp.jpg", "wb")
+                    f.write(frame)
+                    f.close()
                     if state:
                         publish(pubclient, "open", topic1)
-                        flg[2] = False
+                        putData(flg[4], "Admin", "static/temp_image/temp.jpg")
                         flg[4] = ""
-
+                    else:
+                        putData(flg[4], "Guess", "static/temp_image/temp.jpg")
+                    flg[2] = False
+                    
+        
 @app.route('/start')
 def start():
     flg[2] = False
@@ -362,12 +325,13 @@ def start():
     return "Nothing"
 
 
-def run():
-    subclient = connect_mqtt(sub_client_id)
-    subscribe(subclient)
-    subclient.loop_start()
-    pubclient.loop_start()
-    # client.loop_forever()
+# def run():
+#     # pubclient = connect_mqtt(pub_client_id)
+#     # subclient = connect_mqtt(sub_client_id)
+#     # subscribe(subclient)
+#     # subclient.loop_start()
+#     # pubclient.loop_start()
+#     # client.loop_forever()
 
 
 def myFunc(e):
@@ -378,18 +342,20 @@ def myFunc(e):
 @app.route('/index.html')
 def main_page():
     flg[1] = False
+    flg[3] = False
     return render_template('index.html')
 
 
 @app.route('/storage.html')
 def storage():
-    gen_frames()
+    flg[3] = True
     data.sort(key=myFunc)
     return render_template('storage.html', data=data)
 
 
 @app.route('/capture.html', methods=["POST", "GET"])
 def addNew():
+    True    
     # gen_frames()
     # files = [f for f in listdir("static/temp_image")
     #          if isfile(join("static/temp_image", f))]
@@ -419,6 +385,7 @@ def addNew():
 
 @app.route('/delete')
 def delete():
+    flg[3] = True
     files = [f for f in listdir("static/temp_image")
              if isfile(join("static/temp_image", f))]
     onlyfiles = [""]*len(files)
@@ -434,9 +401,10 @@ def video_feed():
 
 
 if __name__ == '__main__':
+    # background()
     embeddings, names = load_faceslist()
     getData()
     face_detected_time = [1]*(len(known_face_names)+1)
     face_names.append("Unknown")
-    run()
-    app.run(debug=True)
+    # run()
+    app.run()

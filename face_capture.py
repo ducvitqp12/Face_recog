@@ -5,7 +5,7 @@ from datetime import datetime
 import os
 
 device =  torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-print(device)
+# print(device)
 
 IMG_PATH = 'static/data/test_images/'
 def capture(usr_name):
