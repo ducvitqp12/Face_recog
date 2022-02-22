@@ -6,6 +6,7 @@ import time
 from os import listdir
 from os.path import isfile, join
 onlyfiles = [f for f in listdir("static/temp_image") if isfile(join("static/temp_image", f))]
+
 for item in onlyfiles:
     tmp = "static/temp_image/" + item
     item = tmp
