@@ -19,7 +19,7 @@ from torchvision import transforms
 from PIL import Image
 from face_capture import capture
 from update_faces import update_face
-from firebase import putData
+from firebase import putData, getFBData
 
 
 app = Flask(__name__)
@@ -33,8 +33,8 @@ model = InceptionResnetV1(
 model.eval()
 
 mtcnn = MTCNN(thresholds=[0.7, 0.7, 0.8], keep_all=True, device=device)
-camera = cv2.VideoCapture(
-    "http://192.168.1.10:6677/videofeed?username=&password=")
+camera_url = "http://192.168.1.10:6677/videofeed?username=&password="
+camera = cv2.VideoCapture(camera_url)
 
 
 
@@ -51,6 +51,7 @@ face_names = []
 face_detected_time = []
 flg = [0, True, False, True, "", False, False]
 data = []
+datas = []
 ctime = [0, 0]
 
 
@@ -123,10 +124,12 @@ def subscribe(client: mqtt_client):
         # if(msg.topic == topic2):
         if(msg.topic == topic1):
             if message == "open":
+                print("test!!")
                 if flg[6]:
                     flg[6] = False
                 else:
-                    success, frame = camera.read()
+                    camera1 = cv2.VideoCapture(camera_url)
+                    success, frame = camera1.read()
                     if success:
                         ret, buffer = cv2.imencode('.jpg', frame)
                         frame = buffer.tobytes()
@@ -137,20 +140,20 @@ def subscribe(client: mqtt_client):
                         f.close()
                         putData("Open by admin", "Admin", "static/temp_image/temp.jpg")
             if message == "start":
-                if not(flg[3]):
-                    flg[2] = True
-                else: 
                     print("bg run")
                     flg[5] = False
                     flg[2] = True
                     background()
+        if(msg.topic == subTopic):
+            sub_msg = message.split(",")
+            updateFaces(sub_msg[0], sub_msg[1])
         print(f"From topic {msg.topic} got message {message}")
         # f = open('output.jpg', "wb")
         # f.write(msg.payload)
         # print("Image Received")
         # f.close()
 
-    # client.subscribe(topic2)
+    client.subscribe(subTopic)
     client.subscribe(topic1)
     client.on_message = on_message
 
@@ -227,8 +230,8 @@ def gen_frames():
     while True:
         isSuccess, frame = camera.read()
         if isSuccess:
-            if flg[2]:
-                recog(frame, embeddings, names)
+            # if flg[2]:
+            #     recog(frame, embeddings, names)
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
             if cv2.waitKey(1)&0xFF == 27:
@@ -237,10 +240,11 @@ def gen_frames():
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 def background():
-    camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
-    camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
+    camera1 = cv2.VideoCapture(camera_url)
+    camera1.set(cv2.CAP_PROP_FRAME_WIDTH,640)
+    camera1.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
     while True:
-        isSuccess, frame = camera.read()
+        isSuccess, frame = camera1.read()
         # print(isSuccess)
         if isSuccess:
             # print("start")
@@ -314,10 +318,10 @@ def recog(frame, embeddings, names):
                         publish(pubclient, "open", topic1)
                         putData(flg[4], "Admin", "static/temp_image/temp.jpg")
                         flg[4] = ""
-                        flg[6] = True
                     else:
                         putData(flg[4], "Guess", "static/temp_image/temp.jpg")
                     flg[2] = False
+                    flg[6] = True
                     
         
 @app.route('/start')
@@ -327,15 +331,21 @@ def start():
     publish(pubclient, "open", topic1)
     return "Nothing"
 
+@app.route('/reload')
+def reload():
+    update_face()
+    return redirect(url_for("storage"))
 
-# def run():
-#     # pubclient = connect_mqtt(pub_client_id)
-#     # subclient = connect_mqtt(sub_client_id)
-#     # subscribe(subclient)
-#     # subclient.loop_start()
-#     # pubclient.loop_start()
-#     # client.loop_forever()
-
+def updateFaces(new_name, rules):
+    save_path = str("static/dataset"+'/{}.jpg'.format(new_name))
+    with open("static/name.txt", "a") as a_file:
+                a_file.write("\n")
+                a_file.write(new_name + "," + save_path + "," + rules)
+    state = capture(new_name)
+    if state:
+            getData()
+            complete = update_face()
+    return complete
 
 def myFunc(e):
     return e[2]
@@ -351,7 +361,8 @@ def main_page():
 @app.route('/add_new.html')
 def history():
     flg[3] = True
-    return render_template('add_new.html')
+    datas = getFBData(20)
+    return render_template('add_new.html', data= datas)
 
 @app.route('/storage.html')
 def storage():
@@ -361,47 +372,18 @@ def storage():
 
 
 @app.route('/capture.html', methods=["POST", "GET"])
-def addNew():
-    True    
-    # gen_frames()
-    # files = [f for f in listdir("static/temp_image")
-    #          if isfile(join("static/temp_image", f))]
-    # onlyfiles = [""]*len(files)
-    # for i in range(len(files)):
-    #     onlyfiles[i] = "static/temp_image/" + files[i]
-    # return render_template('capture.html', onlyfiles=onlyfiles)
+def addNew():    
     if request.method == "POST":
         new_name = request.form["nm"]
         rules = request.form["rules"]
-        save_path = str("static/dataset"+'/{}.jpg'.format(new_name))
-        with open("static/name.txt", "a") as a_file:
-                a_file.write("\n")
-                a_file.write(new_name + "," + save_path + "," + rules)
-        state = capture(new_name)
-        if state:
-            getData()
-            complete = update_face()
-        # return redirect(url_for("start_capture", new_name = new_name))
+        complete = updateFaces(new_name, rules)
         if complete:
             return redirect(url_for("storage"))
         else:
             return render_template('capture.html')
     else: 
         return render_template('capture.html')
-
-
-@app.route('/delete')
-def delete():
-    flg[3] = True
-    files = [f for f in listdir("static/temp_image")
-             if isfile(join("static/temp_image", f))]
-    onlyfiles = [""]*len(files)
-    for i in range(len(files)):
-        onlyfiles[i] = "static/temp_image/" + files[i]
-        remove(onlyfiles[i])
-    return render_template('add_new.html', onlyfiles=onlyfiles)
-
-
+        
 @app.route('/video_feed')
 def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')

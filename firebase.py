@@ -1,6 +1,9 @@
 from os import remove
 import pyrebase
 import time
+import json
+from datetime import datetime
+  
 
 firebaseConfig = {"apiKey": "AIzaSyBLYegf7GSv4TFRv0d2q2AY0NUhMJH9YJ8",
   "authDomain": "doorlock-bb886.firebaseapp.com",
@@ -22,9 +25,11 @@ db = firebase.database()
 # for item in items.each():
 #     print(item.val())
 
-def getData(number):
+def getFBData(number):
     items = db.child("history").order_by_child("timestamp").limit_to_last(number).get()
-    return items
+    datas = getStrData(items)
+    datas.sort(reverse=True)
+    return datas
 def putData(name, opened, path):
     timestamp = round(time.time() * 1000)
     link = putImage(path)
@@ -43,3 +48,21 @@ def putImage(path):
     storage.child(str(timestamp) + ".jpg").put(path)
     # remove(path)
     return storage.child(str(timestamp) + ".jpg").get_url(None)
+
+def getStrData(items):
+    a = []
+    for item in items.each():
+        y = item.val()
+        x = [getTime(y["timestamp"]), y["name"], y["opened"], y["link"]]
+        a.append(x)
+    return a
+
+def getTime(timestamp):
+    dt_obj = datetime.fromtimestamp(timestamp//1000)
+    return dt_obj
+
+# if __name__ == '__main__':
+#     items = getData(10)
+#     for item in items.each():
+#         y = item.val()
+#         print(y["link"])

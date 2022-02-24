@@ -10,24 +10,34 @@
 </head>
 
 <style>
-
-    ol li{
-        background: PaleGoldenRod;
+    ol li {
         text-align: center;
         width: 100%;
     }
-    ol li div{
+
+    ol li:nth-child(even) {
+        color: black;
+        background: PaleGoldenRod;
+    }
+
+    ol li:nth-child(odd) {
+        color: white;
+        background: rgb(187, 177, 65);
+    }
+
+    ol li div {
         display: inline-flex;
         width: 100%;
     }
 
     span {
-        color: white;
+        margin: auto;
         font-size: 20px;
         width: 20%;
     }
 
     .arrow-icon {
+        background: none;
         height: 1.4em;
         width: 10%;
         display: block;
@@ -41,8 +51,8 @@
     .left-bar {
         position: absolute;
         background-color: transparent;
-        top: 0;
-        left: 0;
+        top: 10px;
+        left: 137px;
         width: 20px;
         height: 5px;
         display: block;
@@ -66,8 +76,8 @@
     .right-bar {
         position: absolute;
         background-color: transparent;
-        top: 0px;
-        left: 13px;
+        top: 10px;
+        left: 150px;
         width: 20px;
         height: 5px;
         display: block;
@@ -88,14 +98,23 @@
         z-index: -1;
     }
 
-    .open .left-bar:after {
+    .open li .left-bar:after {
         transform-origin: center center;
         transform: rotate(-70deg);
     }
 
-    .open .right-bar:after {
+    .open li .right-bar:after {
         transform-origin: center center;
         transform: rotate(70deg);
+    }
+
+    li .temp {
+        width: 60%;
+        content-visibility: hidden;
+    }
+
+    li .temp.visible {
+        content-visibility: visible;
     }
 </style>
 
@@ -110,11 +129,6 @@
                 <div class="sidebar-btn">
                     <i class="fas fa-bars"></i>
                 </div>
-                <ul>
-                    <!-- <li><a href="#"><i class="fas fa-search"></i></a></li>
-                        <li><a href="#"><i class="fas fa-bell"></i></a></li> -->
-                    <li><a href="{{ url_for('delete') }}"><i class="fas fa-power-off"></i></a></li>
-                </ul>
             </div>
         </div>
         <!--header menu end-->
@@ -145,16 +159,25 @@
             <ol class="gradient-list">
                 <li>
                     <div>
-                        <span class="date">20/12/2022 </span> <span class="name">Anh Duc</span> <span
-                            class="rules">Admin</span>
+                        <span class="date">Date</span> <span class="name">Name</span> <span class="rules">Rule</span>
+                        <a class="arrow-icon">
+
+                        </a>
+                    </div>
+                </li>
+                {% for item in data %}
+                <li>
+                    <div>
+                        <span class="date">{{item[0]}} </span> <span class="name">{{item[1]}}</span> <span
+                            class="rules">{{item[2]}}</span>
                         <a class="arrow-icon">
                             <span class="left-bar"></span>
                             <span class="right-bar"></span>
                         </a>
                     </div>
-
-                    <img style="width: 60%; content-visibility: hidden;" src="static/temp_image/temp.jpg" alt="">
+                    <img class="temp" src="{{item[3]}}" alt="">
                 </li>
+                {% endfor %}
             </ol>
         </div>
     </div>
@@ -166,8 +189,10 @@
                 $(".wrapper").toggleClass("collapse");
             });
 
-            $(".arrow-icon").click(function () {
+            $("li").click(function () {
+                // $(".wrapper").toggleClass("collapse");
                 $(this).toggleClass("open");
+                $(this).children(".temp").toggleClass("visible");
             });
         });
     </script>
