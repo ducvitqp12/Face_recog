@@ -13,7 +13,7 @@ def capture(usr_name):
     USR_PATH = os.path.join(IMG_PATH, usr_name)
     leap = 1
     mtcnn = MTCNN(margin = 20, keep_all=False, select_largest = True, post_process=False, device = device)
-    cap = cv2.VideoCapture("http://192.168.1.10:6677/videofeed?username=&password=")
+    cap = cv2.VideoCapture("http://192.168.1.10:6677/videofeed?.mjpg")
     saved = False
     while cap.isOpened() and count:
         isSuccess, frame = cap.read()

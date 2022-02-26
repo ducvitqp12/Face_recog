@@ -1,18 +1,15 @@
 
 from contextlib import redirect_stderr
 from email.mime import image
-from unicodedata import name
+from unittest.result import failfast
 from urllib import request
 from flask import Flask, render_template, Response, url_for, redirect, request
 import cv2
-import face_recognition
 import numpy as np
 import time
 import random
 import string
 from paho.mqtt import client as mqtt_client
-from os import listdir, remove
-from os.path import isfile, join
 from facenet_pytorch import MTCNN, InceptionResnetV1, fixed_image_standardization
 import torch
 from torchvision import transforms
@@ -33,23 +30,25 @@ model = InceptionResnetV1(
 model.eval()
 
 mtcnn = MTCNN(thresholds=[0.7, 0.7, 0.8], keep_all=True, device=device)
-camera_url = "http://192.168.1.10:6677/videofeed?username=&password="
+camera_url = "http://192.168.1.10:6677/videofeed?.mjpg"
 camera = cv2.VideoCapture(camera_url)
-
+camera1 = cv2.VideoCapture(camera_url)
 
 
 # Create arrays of known face encodings and their names
-known_face_encodings = []
 known_face_names = []
 known_face_path = []
 known_face_access = []
 # Initialize some variables
 face_locations = []
-face_encodings = []
 process_this_frame = True
 face_names = []
 face_detected_time = []
-flg = [0, True, False, True, "", False, False]
+time_detected = 0
+start_recog = False
+run_bg = False
+lastest_name = ""
+admin_open = False
 data = []
 datas = []
 ctime = [0, 0]
@@ -88,7 +87,6 @@ def connect_mqtt(id: string):
 
 def getData():
     data.clear()
-    known_face_encodings.clear()
     known_face_names.clear()
     known_face_path.clear()
     known_face_access.clear()
@@ -96,9 +94,6 @@ def getData():
         for line in f:
             item = [i for i in line.split(",")]
             data.append(item)
-            image = face_recognition.load_image_file(item[1])
-            face_encoding = face_recognition.face_encodings(image)[0]
-            known_face_encodings.append(face_encoding)
             known_face_names.append(item[0])
             known_face_path.append(item[1])
             known_face_access.append(item[2])
@@ -125,10 +120,9 @@ def subscribe(client: mqtt_client):
         if(msg.topic == topic1):
             if message == "open":
                 print("test!!")
-                if flg[6]:
-                    flg[6] = False
+                if not(admin_open):
+                    admin_open = True
                 else:
-                    camera1 = cv2.VideoCapture(camera_url)
                     success, frame = camera1.read()
                     if success:
                         ret, buffer = cv2.imencode('.jpg', frame)
@@ -141,8 +135,8 @@ def subscribe(client: mqtt_client):
                         putData("Open by admin", "Admin", "static/temp_image/temp.jpg")
             if message == "start":
                     print("bg run")
-                    flg[5] = False
-                    flg[2] = True
+                    run_bg = True
+                    start_recog = True
                     background()
         if(msg.topic == subTopic):
             sub_msg = message.split(",")
@@ -222,16 +216,26 @@ def extract_face(box, img, margin=20):
     face = Image.fromarray(face)
     return face
 
+# Update khuôn mặt
+def updateFaces(new_name, rules):
+    save_path = str("static/dataset"+'/{}.jpg'.format(new_name))
+    with open("static/name.txt", "a") as a_file:
+                a_file.write("\n")
+                a_file.write(new_name + "," + save_path + "," + rules)
+    state = capture(new_name)
+    if state:
+            getData()
+            complete = update_face()
+    return complete
 
+# Frame cho video stream
 def gen_frames():
-    camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
-    camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
+    # camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
+    # camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
     ptime = 0
     while True:
         isSuccess, frame = camera.read()
         if isSuccess:
-            # if flg[2]:
-            #     recog(frame, embeddings, names)
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
             if cv2.waitKey(1)&0xFF == 27:
@@ -239,24 +243,25 @@ def gen_frames():
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
+# Frame chạy ở backgound
 def background():
     camera1 = cv2.VideoCapture(camera_url)
-    camera1.set(cv2.CAP_PROP_FRAME_WIDTH,640)
-    camera1.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
+    # camera1.set(cv2.CAP_PROP_FRAME_WIDTH,640)
+    # camera1.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
     while True:
         isSuccess, frame = camera1.read()
         # print(isSuccess)
         if isSuccess:
             # print("start")
-            if flg[2]:
+            if start_recog:
                 recog(frame, embeddings, names)
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
-            if flg[5]:
+            if not(run_bg):
                 break
     
 def recog(frame, embeddings, names):
-    if(flg[0] < 20):
+    if(time_detected < 50):
         boxes, _ = mtcnn.detect(frame)
         if boxes is not None:
             name = "Unknown"
@@ -279,18 +284,18 @@ def recog(frame, embeddings, names):
                         break
                     if(name != face_names[i] and i == len(face_names)-1):
                         face_names.append(name)
-                flg[0] = flg[0] + 1 
+                time_detected = time_detected + 1 
                 print(name)
-                print(flg[0])
+                print(time_detected)
     else:
         name_detected = ""
         print(face_detected_time)
-        if (max(face_detected_time)/flg[0]) > 0.65:
+        if (max(face_detected_time)/time_detected) > 0.65:
                     name_detected = face_names[face_detected_time.index(
                         max(face_detected_time))]
         else:
                     name_detected = "Unknown"
-        flg[0] = 0
+        time_detected = 0
         print(face_names)
         face_names.clear()
         face_names.append("Unknown")
@@ -299,15 +304,15 @@ def recog(frame, embeddings, names):
                     face_detected_time[i] = 1
         print(face_detected_time)
         i = round(time.time() * 1000)
-        if not(flg[4] == name_detected):
-                    flg[4] = name_detected
+        if not(lastest_name == name_detected):
+                    lastest_name = name_detected
                     state = False
-                    if not(flg[4] == "Unknown"):
-                        if (known_face_access[known_face_names.index(flg[4])] == "admin") or (known_face_access[known_face_names.index(flg[4])] == "admin\n"):
+                    if not(lastest_name == "Unknown"):
+                        if (known_face_access[known_face_names.index(lastest_name)] == "admin") or (known_face_access[known_face_names.index(lastest_name)] == "admin\n"):
                             state = True
                     message = '{"time": ' + str(i) + ',"name": "' + \
-                        flg[4] + '","state": ' + str(state).lower() + '}'
-                    flg[5] = True
+                        lastest_name + '","state": ' + str(state).lower() + '}'
+                    run_bg = False
                     publish(pubclient, message, topic2)
                     ret, buffer = cv2.imencode('.jpg', frame)
                     frame = buffer.tobytes()
@@ -316,18 +321,18 @@ def recog(frame, embeddings, names):
                     f.close()
                     if state:
                         publish(pubclient, "open", topic1)
-                        putData(flg[4], "Admin", "static/temp_image/temp.jpg")
-                        flg[4] = ""
+                        putData(lastest_name, "Admin", "static/temp_image/temp.jpg")
                     else:
-                        putData(flg[4], "Guess", "static/temp_image/temp.jpg")
-                    flg[2] = False
-                    flg[6] = True
+                        putData(lastest_name, "Guess", "static/temp_image/temp.jpg")
+                    lastest_name = ""
+                    start_recog = False
+                    admin_open = False
                     
         
 @app.route('/start')
 def start():
-    flg[2] = False
-    flg[4] = ""
+    start_recog = False
+    lastest_name = ""
     publish(pubclient, "open", topic1)
     return "Nothing"
 
@@ -336,17 +341,6 @@ def reload():
     update_face()
     return redirect(url_for("storage"))
 
-def updateFaces(new_name, rules):
-    save_path = str("static/dataset"+'/{}.jpg'.format(new_name))
-    with open("static/name.txt", "a") as a_file:
-                a_file.write("\n")
-                a_file.write(new_name + "," + save_path + "," + rules)
-    state = capture(new_name)
-    if state:
-            getData()
-            complete = update_face()
-    return complete
-
 def myFunc(e):
     return e[2]
 
@@ -354,19 +348,15 @@ def myFunc(e):
 @app.route('/')
 @app.route('/index.html')
 def main_page():
-    flg[1] = False
-    flg[3] = False
     return render_template('index.html')
 
 @app.route('/add_new.html')
 def history():
-    flg[3] = True
     datas = getFBData(20)
     return render_template('add_new.html', data= datas)
 
 @app.route('/storage.html')
 def storage():
-    flg[3] = True
     data.sort(key=myFunc)
     return render_template('storage.html', data=data)
 
@@ -390,10 +380,8 @@ def video_feed():
 
 
 if __name__ == '__main__':
-    # background()
     embeddings, names = load_faceslist()
     getData()
     face_detected_time = [1]*(len(known_face_names)+1)
     face_names.append("Unknown")
-    # run()
     app.run()

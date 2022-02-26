@@ -1,1 +1,3 @@
 Anh Duc,static/dataset/Anh Duc.jpg,admin
+Tung,static/dataset/Tung.jpg,guess
+Quy,static/dataset/Quy.jpg,admin
